@@ -1,6 +1,13 @@
 import requests
 from bs4 import BeautifulSoup
 import time
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+
+app = Flask(__name__)
+app.json.sort_keys = False
+CORS(app)
+
 url="http://synd.cricbuzz.com/j2me/1.0/livematches.xml"
 r=requests.get(url)
 soup=BeautifulSoup(r.content,'html.parser')
