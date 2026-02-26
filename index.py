@@ -249,7 +249,21 @@ def score():
             "bowlertwoeconomy": 'Data not Found',
 
         })
-
+        
+@app.route('/live', methods=['GET'])
+def get_ids():
+    user_agent = random.choice(user_agent_list)
+    headers = {'User-Agent': user_agent}
+    session_object = requests.Session()
+    r = session_object.get('https://www.cricbuzz.com/cricket-match/live-scores', headers=headers)
+    soup = bs(r.text, 'html.parser')
+    try:
+        match_id_list = soup.find_all('a', class_='text-hvr-underline')
+        # This extracts the ID from the Cricbuzz URL
+        ids = [i['href'].split('/')[2] for i in match_id_list if i['href'].startswith('/live-cricket-scores/')]
+        return jsonify({'live_match_ids': ids})
+    except Exception:
+        return jsonify({'live_match_ids': []})
 
 @app.route('/score/live', methods=['GET'])
 def live():
