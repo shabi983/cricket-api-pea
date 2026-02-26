@@ -46,7 +46,7 @@ def score():
         session_object = requests.Session()
         r = session_object.get(
             'https://www.cricbuzz.com/live-cricket-scores/' + id, headers=headers)
-        soup = bs(r.content, 'lxml')
+        soup = bs(r.text, 'html.parser')
         try:
             update = soup.find_all(
                 "div", attrs={"class": "cb-col cb-col-100 cb-min-stts cb-text-complete"})[0].text.strip() if soup.find_all("div", attrs={"class": "cb-col cb-col-100 cb-min-stts cb-text-complete"}) else 'Match Stats will Update Soon'
@@ -259,7 +259,7 @@ def live():
         session_object = requests.Session()
         r = session_object.get(
             'https://www.cricbuzz.com/live-cricket-scores/' + id, headers=headers)
-        soup = bs(r.content, 'lxml')
+        soup = bs(r.text, 'html.parser')
         try:
             update = soup.find_all(
                 "div", attrs={"class": "cb-col cb-col-100 cb-min-stts cb-text-complete"})[0].text.strip() if soup.find_all("div", attrs={"class": "cb-col cb-col-100 cb-min-stts cb-text-complete"}) else 'Match Stats will Update Soon'
