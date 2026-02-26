@@ -249,6 +249,36 @@ def score():
             "bowlertwoeconomy": 'Data not Found',
 
         })
+
+@app.route('/upcoming', methods=['GET'])
+def upcoming():
+    headers = {'User-Agent': random.choice(user_agent_list)}
+    r = requests.get('https://www.cricbuzz.com/cricket-match/live-scores/upcoming-matches', headers=headers)
+    soup = bs(r.text, 'html.parser')
+    upcoming_matches = []
+    
+    # Logic to find upcoming match containers
+    for match in soup.find_all('div', class_='cb-mtch-lst'):
+        upcoming_matches.append({
+            'title': match.find('h3').text.strip() if match.find('h3') else 'Upcoming Match',
+            'time': match.find('div', class_='cb-font-12 text-gray').text.strip() if match.find('div', class_='cb-font-12 text-gray') else 'Time TBD'
+        })
+    return jsonify(upcoming_matches)
+
+@app.route('/results', methods=['GET'])
+def results():
+    headers = {'User-Agent': random.choice(user_agent_list)}
+    r = requests.get('https://www.cricbuzz.com/cricket-match/live-scores/recent-matches', headers=headers)
+    soup = bs(r.text, 'html.parser')
+    recent_results = []
+    
+    # Logic to find completed match containers
+    for match in soup.find_all('div', class_='cb-mtch-lst'):
+        recent_results.append({
+            'title': match.find('h3').text.strip() if match.find('h3') else 'Completed Match',
+            'result': match.find('div', class_='cb-text-complete').text.strip() if match.find('div', class_='cb-text-complete') else 'Result TBD'
+        })
+    return jsonify(recent_results)
         
 @app.route('/live', methods=['GET'])
 def get_ids():
