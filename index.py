@@ -279,25 +279,35 @@ def live():
     
 @app.route('/upcoming')
 def upcoming():
-    url = "https://www.cricbuzz.com/cricket-schedule/upcoming-series/international"
+    url = "https://www.cricbuzz.com/cricket-match/live-scores/upcoming-matches"
     headers = {'User-Agent': random.choice(user_agent_list)}
     res = requests.get(url, headers=headers)
     soup = bs(res.text, 'html.parser')
     
     upcoming_matches = []
-    # Upcoming matches are usually inside 'cb-lv-grn-strip' headers and siblings
-    match_elements = soup.find_all('div', class_='cb-col-100 cb-col')
     
-    for match in match_elements:
-        title = match.find('a')
-        time = match.find('div', class_='cb-font-12 text-gray')
-        if title and time:
-            upcoming_matches.append({
-                "title": title.text.strip(),
-                "time": time.text.strip()
-            })
+    # In the new layout, each match is an <a> tag with specific classes
+    # We look for links that contain 'live-cricket-scores' and have a title
+    match_links = soup.find_all('a', href=True, title=True)
+    
+    for link in match_links:
+        href = link['href']
+        # We only want links to actual match scores
+        if '/live-cricket-scores/' in href:
+            title = link['title']
             
-    return jsonify(upcoming_matches[:10]) # Return first 10
+            # Find the time: it's in a span with 'text-cbPreview' based on your HTML
+            time_tag = link.find('span', class_=lambda x: x and 'text-cbPreview' in x)
+            time_str = time_tag.text.strip() if time_tag else "Date TBD"
+            
+            # Avoid duplicates
+            if not any(m['title'] == title for m in upcoming_matches):
+                upcoming_matches.append({
+                    "title": title,
+                    "time": time_str
+                })
+            
+    return jsonify(upcoming_matches[:15]) # Return top 15 matches
 
 @app.route('/results')
 def results():
@@ -307,19 +317,28 @@ def results():
     soup = bs(res.text, 'html.parser')
     
     recent_results = []
-    # Search for match cards in the recent section
-    matches = soup.find_all('div', class_='cb-lv-main')
     
-    for match in matches:
-        title = match.find('h3')
-        result = match.find('div', class_='cb-lv-scrs-col') # Scrutinize the result text
-        if title and result:
-            recent_results.append({
-                "title": title.text.strip(),
-                "result": result.text.strip()
-            })
+    # We look for match links containing the score info
+    match_links = soup.find_all('a', href=True, title=True)
+    
+    for link in match_links:
+        href = link['href']
+        # Filter for actual match score links
+        if '/live-cricket-scores/' in href:
+            title = link['title'].strip()
             
-    return jsonify(recent_results[:10])
+            # The match result is in a span with the 'text-cbComplete' class
+            result_tag = link.find('span', class_=lambda x: x and 'text-cbComplete' in x)
+            result_str = result_tag.text.strip() if result_tag else "Match Finished"
+            
+            # Avoid duplicate entries (common in Cricbuzz's responsive layout)
+            if not any(m['title'] == title for m in recent_results):
+                recent_results.append({
+                    "title": title,
+                    "result": result_str
+                })
+            
+    return jsonify(recent_results[:15]) # Return top 15 results
         
 
 @app.route('/score/live', methods=['GET'])
