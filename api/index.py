@@ -1,4 +1,5 @@
 import requests
+import random
 from bs4 import BeautifulSoup as bs
 from flask import Flask, jsonify
 from flask_cors import CORS
@@ -6,18 +7,19 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
-# Use Cricinfo RSS for stability and no limits
 RSS_URL = "http://static.cricinfo.com/rss/livescores.xml"
 
 def get_flag_url(team_name):
-    """Returns a flag URL based on team name using a public CDN."""
-    # Mapping for common World Cup 2026 teams
     flags = {
         "India": "in", "Pakistan": "pk", "England": "gb", "Australia": "au",
         "South Africa": "za", "New Zealand": "nz", "Sri Lanka": "lk",
-        "West Indies": "wi", "Afghanistan": "af", "Netherlands": "nl"
+        "West Indies": "wi", "Afghanistan": "af", "Netherlands": "nl",
+        "USA": "us", "Canada": "ca", "Ireland": "ie", "Scotland": "gb-sct",
+        "Namibia": "na", "Oman": "om", "Nepal": "np", "Bangladesh": "bd"
     }
-    code = flags.get(team_name, "un") # 'un' for unknown
+    # Clean team name (remove " (W)" or score snippets)
+    clean_name = team_name.split(' ')[0] if team_name else ""
+    code = flags.get(clean_name, "un")
     return f"https://flagcdn.com/w80/{code}.png"
 
 @app.route('/wc-data')
@@ -30,23 +32,28 @@ def get_world_cup_data():
         live, upcoming, recent = [], [], []
 
         for item in items:
-            title = item.find('title').text
-            desc = item.find('description').text
-            link = item.find('link').text
+            title = item.find('title').text # e.g. "Pakistan 150/2 v England"
+            desc = item.find('description').text # e.g. "Match starts in 3h 8m"
             
-            # Filter specifically for the World Cup
-            if "T20 World Cup" in title or "2026" in title or "T20WC" in title:
+            # Filter specifically for the T20 World Cup 2026
+            if "T20 World Cup" in title or "2026" in title:
+                # Split teams accurately
+                teams_part = title.split(' v ')
+                t1_name = teams_part[0].split(' ')[0] if len(teams_part) > 0 else "TBD"
+                t2_name = teams_part[1].split(' ')[0] if len(teams_part) > 1 else "TBD"
+
                 match_data = {
                     "full_title": title,
-                    "teams": title.split(" v ")[0] if " v " in title else title,
+                    "team1": t1_name,
+                    "team2": t2_name,
+                    "flag1": get_flag_url(t1_name),
+                    "flag2": get_flag_url(t2_name),
                     "status": desc,
-                    "link": link
                 }
                 
-                # Logic to categorize based on status text
-                if "Match starts" in desc:
+                if "Match starts" in desc or "Today" in desc or ":" in desc:
                     upcoming.append(match_data)
-                elif "won by" in desc or "Match drawn" in desc or "result" in desc.lower():
+                elif "won by" in desc or "result" in desc.lower():
                     recent.append(match_data)
                 else:
                     live.append(match_data)
@@ -55,5 +62,7 @@ def get_world_cup_data():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# This handles the root URL on Vercel
+@app.route('/')
+def home():
+    return "T20 World Cup API is Live. Use /wc-data to fetch results."
