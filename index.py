@@ -1,6 +1,6 @@
+import random
 import requests
-from bs4 import BeautifulSoup
-import time
+from bs4 import BeautifulSoup as bs
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
@@ -8,66 +8,69 @@ app = Flask(__name__)
 app.json.sort_keys = False
 CORS(app)
 
-url="http://synd.cricbuzz.com/j2me/1.0/livematches.xml"
-r=requests.get(url)
-soup=BeautifulSoup(r.content,'html.parser')
-temp=soup.find_all('match')
-series_names=[]
-datapath=[]
-for i in temp:
-    i=str(i)
-    i=i.split('datapath')[1]
-    i=i.split('"')
-    datapath.append(i[1])
-    series_names.append(i[13])
-for i in range(len(datapath)):
-    print str(i+1)+")"+series_names[i]
-ip=input("Enter the match number: ")
-datapath=datapath[ip-1]
-series_names=series_names[ip-1]
-com_url=datapath+"commentary.xml"
-old_overs="0"
-while(True):
-    r=requests.get(com_url)
-    soup=BeautifulSoup(r.content,'html.parser')
-    temp=soup.find('c')
-    comm=str(temp)
-    comm=comm.replace('<c><![CDATA[',"")
-    comm=comm.replace("]]></c>","")
-    print "____"*20
-    test=comm
-    temp=str(soup.find_all('mscr'))
-    runs=temp.split('r="')[3]
-    runs=runs.split('"')[0]
-    wickets=temp.split('wkts="')[1]
-    wickets=wickets.split('"')[0]
-    overs=temp.split('ovrs')
-    overs=overs[1]
-    overs=overs.split('"')[1]
-    batsman=temp.split('btsmn')
-    bat1=batsman[1].split('sname="')[1].split('"')[0]
-    bat2=batsman[3].split('sname="')[1].split('"')[0]
-    r1=batsman[1].split('r="')[1].split('"')[0]
-    r2=batsman[3].split('r="')[1].split('"')[0]
-    # print "____"*20
-    if(old_overs ==overs):
-        pass
-    else:
-            print comm
-            print "Score :"+runs + "/"+wickets
-            print "Overs :"+str(overs)
-            print bat1+" :"+r1," "+bat2+" :"+r2
-    old_overs=overs
-    time.sleep(15)
+# A more modern list of user agents
+user_agent_list = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36'
+]
 
-# print datapath,series_names
+@app.route('/')
+def hello():
+    return jsonify({'message': 'Cricbuzz XML API is running'})
 
+@app.route('/live')
+def get_live_ids():
+    url = "http://synd.cricbuzz.com/j2me/1.0/livematches.xml"
+    headers = {'User-Agent': random.choice(user_agent_list)}
+    r = requests.get(url, headers=headers)
+    soup = bs(r.content, 'xml') # Use XML parser
+    
+    matches = soup.find_all('match')
+    live_match_ids = []
+    
+    for m in matches:
+        # The 'datapath' usually contains the ID at the end of the URL
+        path = m.get('datapath')
+        if path:
+            # Extract ID from path (e.g., http://.../cricket/live/scorecard/12345/)
+            match_id = path.strip('/').split('/')[-1]
+            live_match_ids.append(match_id)
+            
+    return jsonify({"live_match_ids": live_match_ids})
 
+@app.route('/score', methods=['GET'])
+def get_score():
+    match_id = request.args.get('id')
+    # We reconstruct the commentary URL using the ID
+    # Note: This is an example path structure
+    url = f"http://synd.cricbuzz.com/j2me/1.0/match/{match_id}/commentary.xml"
+    
+    headers = {'User-Agent': random.choice(user_agent_list)}
+    try:
+        r = requests.get(url, headers=headers)
+        soup = bs(r.content, 'xml')
+        
+        # Pulling data from the XML structure
+        mscr = soup.find('mscr') # Match Score tag
+        btm = soup.find_all('btsmn') # Batsmen tags
+        
+        # Get team scores
+        inns = mscr.find('inngs') if mscr else None
+        runs = inns.get('r') if inns else "0"
+        wickets = inns.get('wkts') if inns else "0"
+        overs = inns.get('ovrs') if inns else "0"
 
+        # Get Batsmen
+        bat1 = f"{btm[0].get('sname')} ({btm[0].get('r')})" if len(btm) > 0 else "N/A"
+        bat2 = f"{btm[1].get('sname')} ({btm[1].get('r')})" if len(btm) > 1 else "N/A"
 
+        return jsonify({
+            'title': soup.find('match').get('mchDesc') if soup.find('match') else "Live Match",
+            'livescore': f"{runs}/{wickets} ({overs} ov)",
+            'update': soup.find('c').text if soup.find('c') else "No commentary available",
+            'runrate': f"Batsmen: {bat1}, {bat2}"
+        })
+    except Exception as e:
+        return jsonify({"error": "Match data not available in XML format"}), 404
 
-
-
-
-# print datapath
-# print series_names
+# Keep your /upcoming and /results from the previous version as they work best with HTML scraping
