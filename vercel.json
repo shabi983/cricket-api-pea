@@ -1,3 +1,6 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "api/index" }]
+  "rewrites": [
+    { "source": "/wc-data", "destination": "/api/index" },
+    { "source": "/(.*)", "destination": "/api/index" }
+  ]
 }
