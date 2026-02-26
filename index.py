@@ -1,109 +1,66 @@
-import random
 import requests
-from bs4 import BeautifulSoup as bs
-from flask import Flask, jsonify, request
-from flask_cors import CORS
-from datetime import datetime
-import pytz
+from bs4 import BeautifulSoup
+import time
+url="http://synd.cricbuzz.com/j2me/1.0/livematches.xml"
+r=requests.get(url)
+soup=BeautifulSoup(r.content,'html.parser')
+temp=soup.find_all('match')
+series_names=[]
+datapath=[]
+for i in temp:
+    i=str(i)
+    i=i.split('datapath')[1]
+    i=i.split('"')
+    datapath.append(i[1])
+    series_names.append(i[13])
+for i in range(len(datapath)):
+    print str(i+1)+")"+series_names[i]
+ip=input("Enter the match number: ")
+datapath=datapath[ip-1]
+series_names=series_names[ip-1]
+com_url=datapath+"commentary.xml"
+old_overs="0"
+while(True):
+    r=requests.get(com_url)
+    soup=BeautifulSoup(r.content,'html.parser')
+    temp=soup.find('c')
+    comm=str(temp)
+    comm=comm.replace('<c><![CDATA[',"")
+    comm=comm.replace("]]></c>","")
+    print "____"*20
+    test=comm
+    temp=str(soup.find_all('mscr'))
+    runs=temp.split('r="')[3]
+    runs=runs.split('"')[0]
+    wickets=temp.split('wkts="')[1]
+    wickets=wickets.split('"')[0]
+    overs=temp.split('ovrs')
+    overs=overs[1]
+    overs=overs.split('"')[1]
+    batsman=temp.split('btsmn')
+    bat1=batsman[1].split('sname="')[1].split('"')[0]
+    bat2=batsman[3].split('sname="')[1].split('"')[0]
+    r1=batsman[1].split('r="')[1].split('"')[0]
+    r2=batsman[3].split('r="')[1].split('"')[0]
+    # print "____"*20
+    if(old_overs ==overs):
+        pass
+    else:
+            print comm
+            print "Score :"+runs + "/"+wickets
+            print "Overs :"+str(overs)
+            print bat1+" :"+r1," "+bat2+" :"+r2
+    old_overs=overs
+    time.sleep(15)
 
-app = Flask(__name__)
-app.json.sort_keys = False
-CORS(app)
+# print datapath,series_names
 
-user_agent_list = [
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0',
-    'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0',
-]
 
-def get_soup(url):
-    headers = {'User-Agent': random.choice(user_agent_list), 'Cache-Control': 'no-cache'}
-    res = requests.get(url, headers=headers)
-    return bs(res.text, 'html.parser')
 
-@app.route('/')
-def hello():
-    return jsonify({'Code': 200, 'message': 'Python - Free Cricket Score API'})
 
-@app.route('/score', methods=['GET'])
-def get_score():
-    match_id = request.args.get('id')
-    url = f"https://www.cricbuzz.com/live-cricket-scores/{match_id}"
-    soup = get_soup(url)
-    
-    try:
-        # Title
-        title = soup.find("h1", class_="cb-nav-hdr").text.replace(", Commentary", "").strip() if soup.find("h1") else "Match Name Unavailable"
-        
-        # Livescore - more robust selector
-        score_section = soup.find("div", class_="cb-min-bat-rw")
-        livescore = score_section.find("span", class_="cb-font-20").text.strip() if score_section else "Live Score TBD"
-        
-        # Status/Update
-        status_div = soup.find("div", class_="cb-text-inprogress") or soup.find("div", class_="cb-text-complete") or soup.find("div", class_="cb-text-stumps")
-        update = status_div.text.strip() if status_div else "Match Stats will Update Soon"
-        
-        # Run Rate
-        rr_tag = soup.find("span", class_="cb-font-12")
-        runrate = rr_tag.text.strip() if rr_tag and "CRR" in rr_tag.text else "CRR: N/A"
 
-        return jsonify({
-            'title': title,
-            'livescore': livescore,
-            'update': update,
-            'runrate': runrate
-        })
-    except:
-        return jsonify({'title': 'Error Loading', 'livescore': 'N/A', 'update': 'N/A', 'runrate': 'N/A'})
 
-@app.route('/live')
-def get_live_ids():
-    soup = get_soup("https://www.cricbuzz.com/cricket-match/live-scores")
-    live_match_ids = []
-    # This searches all links instead of just specific divs
-    for link in soup.find_all('a', href=True):
-        if '/live-cricket-scores/' in link['href']:
-            parts = link['href'].split('/')
-            if len(parts) >= 3 and parts[2].isdigit():
-                mid = parts[2]
-                if mid not in live_match_ids:
-                    live_match_ids.append(mid)
-    return jsonify({"live_match_ids": live_match_ids})
 
-@app.route('/upcoming')
-def get_upcoming():
-    soup = get_soup("https://www.cricbuzz.com/cricket-match/live-scores/upcoming-matches")
-    upcoming = []
-    # Targeted containers for upcoming matches
-    for match in soup.find_all('div', class_='cb-mtch-lst'):
-        title = match.find('a', class_='text-hvr-underline')
-        time = match.find('div', class_='cb-mtch-crd-state')
-        if title:
-            upcoming.append({
-                "title": title.text.strip(),
-                "time": time.text.strip() if time else "Time TBD"
-            })
-    return jsonify(upcoming)
 
-@app.route('/results')
-def get_results():
-    soup = get_soup("https://www.cricbuzz.com/cricket-match/live-scores/recent-matches")
-    results = []
-    for match in soup.find_all('div', class_='cb-mtch-lst'):
-        title = match.find('a', class_='text-hvr-underline')
-        result_text = match.find('div', class_='cb-text-complete')
-        
-        # To get actual scores like "NZ 125/2...", we look for the score div
-        score_div = match.find('div', class_='cb-scr-itms')
-        score_display = score_div.text.strip() if score_div else ""
-
-        if title and result_text:
-            results.append({
-                "title": title.text.strip(),
-                "result": result_text.text.strip(),
-                "score": score_display # This contains the summary of runs
-            })
-    return jsonify(results)
-
-if __name__ == '__main__':
-    app.run(debug=True)
+# print datapath
+# print series_names
