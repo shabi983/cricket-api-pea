@@ -39,14 +39,15 @@ def hello():
 
 
 @app.route('/score', methods=['GET'])
-def score():
-    get_id = request.args.get('id')
-    id = escape(get_id)
-    if id:
-        session_object = requests.Session()
-        r = session_object.get(
-            'https://www.cricbuzz.com/live-cricket-scores/' + id, headers=headers)
-        soup = bs(r.text, 'html.parser')
+def get_score():
+    match_id = request.args.get('id')
+    if not match_id:
+        return jsonify({"error": "No ID provided"}), 400
+
+    url = f"https://www.cricbuzz.com/live-cricket-scores/{match_id}"
+    headers = {'User-Agent': random.choice(user_agent_list)}
+    res = requests.get(url, headers=headers)
+    soup = bs(res.text, 'html.parser')
         try:
             update = soup.find_all(
                 "div", attrs={"class": "cb-col cb-col-100 cb-min-stts cb-text-complete"})[0].text.strip() if soup.find_all("div", attrs={"class": "cb-col cb-col-100 cb-min-stts cb-text-complete"}) else 'Match Stats will Update Soon'
@@ -252,29 +253,30 @@ def score():
 
 @app.route('/live')
 def live():
+    # We scrape the live scores page
     url = "https://www.cricbuzz.com/cricket-match/live-scores"
     headers = {'User-Agent': random.choice(user_agent_list)}
     res = requests.get(url, headers=headers)
     soup = bs(res.text, 'html.parser')
 
-    # Updated selector for the main match containers
     live_match_ids = []
-    # Cricbuzz uses 'cb-lv-main' for the match cards on the live page
-    matches = soup.find_all('div', class_='cb-mtch-lst') # Standard list class
     
-    # If that fails, we try the alternative 'cb-col cb-col-100 cb-lv-main'
-    if not matches:
-        matches = soup.find_all('div', class_='cb-lv-main')
-
-    for match in matches:
-        link = match.find('a', href=True)
-        if link:
-            # Extract ID from href: /live-cricket-scores/12345/match-name
-            match_id = link['href'].split('/')[2]
-            live_match_ids.append(match_id)
+    # 1. Find all links on the page
+    links = soup.find_all('a', href=True)
+    
+    for link in links:
+        href = link['href']
+        # 2. Look for the specific link pattern you found in your Inspect code
+        if '/live-cricket-scores/' in href:
+            parts = href.split('/')
+            # The ID is the 2nd part: /live-cricket-scores/[146961]/name
+            if len(parts) >= 3:
+                match_id = parts[2]
+                if match_id.isdigit() and match_id not in live_match_ids:
+                    live_match_ids.append(match_id)
 
     return jsonify({"live_match_ids": live_match_ids})
-
+    
 @app.route('/upcoming')
 def upcoming():
     url = "https://www.cricbuzz.com/cricket-schedule/upcoming-series/international"
