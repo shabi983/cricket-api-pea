@@ -1,27 +1,10 @@
-# Free Cricket API 🍔
+# Python Cricket API
 
-Cricket API - Live Cricket Score JSON API 🏏  
+Free Cricket API - Scrape the data using `BeautifulSoup` and export a output via JSON using Flask micro web framework.  
 
-***PHP, Node.js and deno Cricket API was not working due to the Cricbuzz Mobile site being Fully Redesigned - The full Site Structure was Changed it's a bit complex to get data - Please Consider using this Python Cricket API Version - Breaking Changes: JSON API Structure was changed update your app or website according to the changes in JSON data***  
+You can Free Deploy it on `Vercel`
 
-unofficial API Data Fetched from `Cricbuzz.com`  
-
-This is an unofficial API and not Linked or Partnered with Any Brands/Company.  
-
-> **Recently we shutdown our Free API Server due to bulk API Calls Personally we Suggest you to Self Host this API on your server - instant Deploy on Vercel or create Docker Container - <https://github.com/sanwebinfo/cricket-api?tab=readme-ov-file#free-deploy->**  
-
-## How it Works? 🤔
-
-Scrape the data using `BeautifulSoup` and export a output via JSON using `Flask` micro web framework.
-
-Everything is scraped live and shown to end users in realtime.
-
-Example: **API URL 🌐**
-
-```sh
-# Copy the 5 digit code from cricbuzz Current Live Match URL 
-http://127.0.0.1:5000/score?id=<Match ID>
-```
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fsanwebinfo%2Fcricket-api%2Ftree%2Fmain%2Fapi)  
 
 ## Requirements and Features 📑
 
@@ -34,16 +17,15 @@ http://127.0.0.1:5000/score?id=<Match ID>
 - Nginx, Apache2 or Lightspeed for support Proxy
 - HTTPS (For Secure SSL Connections)  
 
-## Installation 🍯
-
-- Download or Clone Repo to your Server/localhost
+## Setup and Development
 
 ```sh
-git clone https://github.com/sanwebinfo/cricket-api
-cd cricket-api/api
-
 ## install python env
 sudo apt install python3-venv
+
+## Clone the Repo
+git clone https://github.com/sanwebinfo/cricket-api.git
+cd cricket-api/api
 
 ## Create Virtual Env
 python3 -m venv venv
@@ -59,24 +41,32 @@ python3 -m flask --version
 
 ## start the dev server 
 flask --app index.py --debug run --host=0.0.0.0 --port=5000
+```
 
 ## Exit from Virtual Env
+
+```sh
 deactivate
 ```
 
-- Test the API
+- Edit and Modification in `index.py`
+
+- `index.py` - for Vercel Hosting
+
+## Usage
+
+- API Home Page
 
 ```sh
-## API Home page
 http://127.0.0.1:5000/
-
-## GET Match data
-http://127.0.0.1:5000/score?id=<Match ID>
 ```
 
-### Example Response 🌐
+- Get Live Cricket Score
 
-![Cricket API](https://raw.githubusercontent.com/sanwebinfo/cricket-api/main/images/screenshot.jpg)  
+```sh
+# Copy the 5 digit code from cricbuzz Current Live Match URL 
+http://127.0.0.1:5000/score?id=<Match ID>
+```
 
 ```json
 {
@@ -105,58 +95,75 @@ http://127.0.0.1:5000/score?id=<Match ID>
 }
 ```
 
-## Code Examples ☕
+## Self-hosting
 
-- WordPress
+- Replace `app.run()` with `app.run(host="0.0.0.0")` to run in production server
 
-```php
-function display_api_response() {
-  $base_url = 'http://127.0.0.1:5000/score?id=';
-  $match_id = '123456';
-  $url = $base_url.$match_id;
-  $response = wp_remote_get($url);
-  global $body;
-  $body = json_decode( $response['body'], true );
-}
-add_action( 'init', 'display_api_response' );
+```py
+if __name__ == '__main__':
+    app.run(host="0.0.0.0")
+    # app.run(
+    #    host="0.0.0.0",
+    #    port=int("5000")
+    # )
 ```
 
-Replace `http://127.0.0.1:5000` with your API URL  
+- Create `wsgi.py` file and add the below code
 
-- Fetch API (Javascript)
+```py
+from index import app
 
-```js
-var match_id = '123456';
-
-async function fetchscore() {
-    try {
-        const response = await fetch('http://127.0.0.1:5000/score?id=' + match_id);
-        const data = await response.json();
-        console.log(data);
-    } catch (exception) {
-        console.log('Connection issue');
-    }
-}
-fetchscore();
+if __name__ == "__main__":
+    app.run()
 ```
 
-## Free Deploy 😍
-
-- Deploy on Vercel
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fsanwebinfo%2Fcricket-api%2Ftree%2Fmain%2Fapi)  
-
-## Development
-
-- Update Submodule
+- Run the API with gunicorn and systemd service
 
 ```sh
-git submodule update --remote --merge
+pip install gunicorn
+ ```
+
+- Use Apache or Nginx for proxy server
+
+## Older version support
+
+- if you are using older version of python3.6.x try this below versions
+
+```txt
+
+## requirements.txt file
+
+beautifulsoup4==4.12.2
+cchardet==2.1.7
+certifi==2023.11.17
+charset-normalizer==2.0.12
+click==8.0.4
+dataclasses==0.8
+Flask==2.0.3
+Flask-Cors==4.0.0
+gunicorn==21.2.0
+idna==3.6
+importlib-metadata==4.8.3
+itsdangerous==2.0.1
+Jinja2==3.0.3
+lxml==4.9.4
+MarkupSafe==2.0.1
+packaging==21.3
+pkg-resources==0.0.0
+pur==7.3.1
+pyparsing==3.1.1
+pytz==2023.3.post1
+requests==2.27.1
+six==1.16.0
+soupsieve==2.3.2.post1
+typing-extensions==4.1.1
+urllib3==1.26.18
+Werkzeug==2.0.3
+zipp==3.6.0
+
 ```
 
-## Contributing 🙌
-
-Your PR's are Welcome
+- Replace `app.json.sort_keys = False` to `app.config['JSON_SORT_KEYS'] = False` in `index.py`
 
 ## Disclaimer 🗃
 
@@ -165,6 +172,6 @@ Your PR's are Welcome
 
 All Credits Goes to <https://www.cricbuzz.com/>
 
-## LICENSE 📕
+## LICENSE
 
 MIT
