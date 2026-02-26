@@ -3,34 +3,27 @@ import requests
 from bs4 import BeautifulSoup as bs
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+from datetime import datetime
+import pytz
 
 app = Flask(__name__)
 app.json.sort_keys = False
 CORS(app)
 
 user_agent_list = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36'
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/111.0',
+    'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:120.0) Gecko/20100101 Firefox/120.0',
 ]
 
 def get_soup(url):
-    headers = {'User-Agent': random.choice(user_agent_list)}
+    headers = {'User-Agent': random.choice(user_agent_list), 'Cache-Control': 'no-cache'}
     res = requests.get(url, headers=headers)
     return bs(res.text, 'html.parser')
 
-@app.route('/live')
-def get_live_ids():
-    soup = get_soup("https://www.cricbuzz.com/cricket-match/live-scores")
-    live_match_ids = []
-    # Looks for matches that are currently "Live"
-    for container in soup.find_all('div', class_='cb-mtch-lst'):
-        link = container.find('a', href=True)
-        if link and '/live-cricket-scores/' in link['href']:
-            match_id = link['href'].split('/')[2]
-            if match_id not in live_match_ids:
-                live_match_ids.append(match_id)
-    return jsonify({"live_match_ids": live_match_ids})
+@app.route('/')
+def hello():
+    return jsonify({'Code': 200, 'message': 'Python - Free Cricket Score API'})
 
 @app.route('/score', methods=['GET'])
 def get_score():
@@ -62,6 +55,19 @@ def get_score():
         })
     except:
         return jsonify({'title': 'Error Loading', 'livescore': 'N/A', 'update': 'N/A', 'runrate': 'N/A'})
+
+@app.route('/live')
+def get_live_ids():
+    soup = get_soup("https://www.cricbuzz.com/cricket-match/live-scores")
+    live_match_ids = []
+    # Looks for matches that are currently "Live"
+    for container in soup.find_all('div', class_='cb-mtch-lst'):
+        link = container.find('a', href=True)
+        if link and '/live-cricket-scores/' in link['href']:
+            match_id = link['href'].split('/')[2]
+            if match_id not in live_match_ids:
+                live_match_ids.append(match_id)
+    return jsonify({"live_match_ids": live_match_ids})
 
 @app.route('/upcoming')
 def get_upcoming():
