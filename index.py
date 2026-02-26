@@ -60,13 +60,14 @@ def get_score():
 def get_live_ids():
     soup = get_soup("https://www.cricbuzz.com/cricket-match/live-scores")
     live_match_ids = []
-    # Looks for matches that are currently "Live"
-    for container in soup.find_all('div', class_='cb-mtch-lst'):
-        link = container.find('a', href=True)
-        if link and '/live-cricket-scores/' in link['href']:
-            match_id = link['href'].split('/')[2]
-            if match_id not in live_match_ids:
-                live_match_ids.append(match_id)
+    # This searches all links instead of just specific divs
+    for link in soup.find_all('a', href=True):
+        if '/live-cricket-scores/' in link['href']:
+            parts = link['href'].split('/')
+            if len(parts) >= 3 and parts[2].isdigit():
+                mid = parts[2]
+                if mid not in live_match_ids:
+                    live_match_ids.append(mid)
     return jsonify({"live_match_ids": live_match_ids})
 
 @app.route('/upcoming')
