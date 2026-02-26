@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>T20 World Cup 2026 Tracker</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #0f172a; color: white; margin: 0; padding: 20px; }
+        .tabs { display: flex; justify-content: center; gap: 15px; margin-bottom: 30px; }
+        .tab-btn { padding: 12px 35px; border: none; background: #1e293b; color: #94a3b8; cursor: pointer; border-radius: 8px; font-weight: bold; transition: 0.3s; }
+        .tab-btn.active { background: #3b82f6; color: white; transform: translateY(-2px); }
+        
+        .match-card { background: #1e293b; border-radius: 15px; padding: 25px; margin: 0 auto 20px auto; max-width: 600px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4); border-top: 4px solid #3b82f6; }
+        h3 { text-align: center; margin: 0 0 20px 0; color: #3b82f6; font-size: 1.4rem; }
+        
+        .teams-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .team-box { flex: 1; text-align: center; }
+        .team-box img { width: 60px; height: auto; border-radius: 6px; border: 2px solid #334155; margin-bottom: 8px; }
+        .team-name { font-weight: bold; font-size: 1.1rem; }
+        
+        .vs-divider { font-weight: bold; color: #64748b; font-size: 0.9rem; padding: 0 15px; }
+        
+        .score-box { background: #0f172a; padding: 15px; border-radius: 10px; text-align: center; border: 1px solid #334155; }
+        .live-score { font-family: 'Courier New', monospace; font-size: 1.2rem; color: #10b981; font-weight: bold; }
+        .upcoming-time { color: #f59e0b; font-size: 1.1rem; font-weight: bold; }
+        
+        .meta-footer { text-align: center; margin-top: 15px; font-size: 0.85rem; color: #64748b; border-top: 1px solid #334155; padding-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <h1 style="text-align:center;">🏆 ICC MEN'S T20 WORLD CUP 2026</h1>
+    
+    <div class="tabs">
+        <button class="tab-btn active" onclick="showTab('live', event)">LIVE</button>
+        <button class="tab-btn" onclick="showTab('upcoming', event)">UPCOMING</button>
+        <button class="tab-btn" onclick="showTab('recent', event)">RECENT</button>
+    </div>
+
+    <div id="content"></div>
+
+    <script>
+        let fullData = { live: [], upcoming: [], recent: [] };
+        const API_URL = "https://cricket-api-pea-g32b.vercel.app/wc-data";
+
+        async function loadData() {
+            try {
+                const res = await fetch(API_URL);
+                fullData = await res.json();
+                renderMatches('live');
+            } catch (e) {
+                document.getElementById('content').innerHTML = "<p style='text-align:center;'>API Offline or Filtering Matches...</p>";
+            }
+        }
+
+        function showTab(type, event) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            renderMatches(type);
+        }
+
+        function renderMatches(type) {
+            const container = document.getElementById('content');
+            container.innerHTML = "";
+            const matches = fullData[type] || [];
+
+            if (matches.length === 0) {
+                container.innerHTML = `<p style="text-align:center; color:#64748b;">No ${type} T20 World Cup matches right now.</p>`;
+                return;
+            }
+
+            matches.forEach(m => {
+                let displayInfo = "";
+                if(type === 'live') {
+                    displayInfo = `<div class="live-score">${m.full_title}</div>`;
+                } else if(type === 'upcoming') {
+                    displayInfo = `<div class="upcoming-time">Starts in: ${m.status.replace('Match starts in ', '')}</div>`;
+                } else {
+                    displayInfo = `<div style="color:#3b82f6;">${m.status}</div>`;
+                }
+
+                container.innerHTML += `
+                    <div class="match-card">
+                        <h3>${m.team1} vs ${m.team2}</h3>
+                        <div class="teams-container">
+                            <div class="team-box">
+                                <img src="${m.flag1}" onerror="this.src='https://flagcdn.com/w80/un.png'">
+                                <div class="team-name">${m.team1}</div>
+                            </div>
+                            <div class="vs-divider">VS</div>
+                            <div class="team-box">
+                                <img src="${m.flag2}" onerror="this.src='https://flagcdn.com/w80/un.png'">
+                                <div class="team-name">${m.team2}</div>
+                            </div>
+                        </div>
+                        <div class="score-box">${displayInfo}</div>
+                        <div class="meta-footer">Ahmedabad, Feb 26, 2026 • T20 World Cup</div>
+                    </div>
+                `;
+            });
+        }
+
+        loadData();
+        setInterval(loadData, 30000); // Refresh data every 30 seconds
+    </script>
+</body>
+</html>
