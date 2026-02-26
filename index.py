@@ -20,23 +20,30 @@ def hello():
 
 @app.route('/live')
 def get_live_ids():
-    url = "http://synd.cricbuzz.com/j2me/1.0/livematches.xml"
-    headers = {'User-Agent': random.choice(user_agent_list)}
-    r = requests.get(url, headers=headers)
-    soup = bs(r.content, 'xml') # Use XML parser
-    
-    matches = soup.find_all('match')
-    live_match_ids = []
-    
-    for m in matches:
-        # The 'datapath' usually contains the ID at the end of the URL
-        path = m.get('datapath')
-        if path:
-            # Extract ID from path (e.g., http://.../cricket/live/scorecard/12345/)
-            match_id = path.strip('/').split('/')[-1]
-            live_match_ids.append(match_id)
-            
-    return jsonify({"live_match_ids": live_match_ids})
+    try:
+        soup = get_soup("https://www.cricbuzz.com/cricket-match/live-scores")
+        live_match_ids = []
+        
+        # Find all match containers
+        containers = soup.find_all('div', class_='cb-mtch-lst')
+        
+        for container in containers:
+            link_tag = container.find('a', href=True)
+            if link_tag:
+                href = link_tag['href']
+                # Safer ID extraction
+                parts = href.strip('/').split('/')
+                # Cricbuzz IDs are usually the 3rd or last part of the URL
+                for part in parts:
+                    if part.isdigit():
+                        if part not in live_match_ids:
+                            live_match_ids.append(part)
+                            break 
+                            
+        return jsonify({"live_match_ids": live_match_ids})
+    except Exception as e:
+        # This prevents the 500 error by returning a descriptive error instead
+        return jsonify({"error": str(e), "live_match_ids": []}), 500
 
 @app.route('/score', methods=['GET'])
 def get_score():
