@@ -66,3 +66,9 @@ def get_world_cup_data():
 @app.route('/')
 def home():
     return "T20 World Cup API is Live. Use /wc-data to fetch results."
+
+if __name__ == '__main__':
+    # Render provides a PORT environment variable
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
