@@ -1,6 +1,0 @@
-services:
-  - type: web
-    name: t20-world-cup-api
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn api.index:app
