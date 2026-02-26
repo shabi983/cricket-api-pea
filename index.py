@@ -250,50 +250,75 @@ def score():
 
         })
 
-@app.route('/upcoming', methods=['GET'])
-def upcoming():
+@app.route('/live')
+def live():
+    url = "https://www.cricbuzz.com/cricket-match/live-scores"
     headers = {'User-Agent': random.choice(user_agent_list)}
-    r = requests.get('https://www.cricbuzz.com/cricket-match/live-scores/upcoming-matches', headers=headers)
-    soup = bs(r.text, 'html.parser')
-    upcoming_matches = []
-    
-    # Logic to find upcoming match containers
-    for match in soup.find_all('div', class_='cb-mtch-lst'):
-        upcoming_matches.append({
-            'title': match.find('h3').text.strip() if match.find('h3') else 'Upcoming Match',
-            'time': match.find('div', class_='cb-font-12 text-gray').text.strip() if match.find('div', class_='cb-font-12 text-gray') else 'Time TBD'
-        })
-    return jsonify(upcoming_matches)
+    res = requests.get(url, headers=headers)
+    soup = bs(res.text, 'html.parser')
 
-@app.route('/results', methods=['GET'])
-def results():
-    headers = {'User-Agent': random.choice(user_agent_list)}
-    r = requests.get('https://www.cricbuzz.com/cricket-match/live-scores/recent-matches', headers=headers)
-    soup = bs(r.text, 'html.parser')
-    recent_results = []
+    # Updated selector for the main match containers
+    live_match_ids = []
+    # Cricbuzz uses 'cb-lv-main' for the match cards on the live page
+    matches = soup.find_all('div', class_='cb-mtch-lst') # Standard list class
     
-    # Logic to find completed match containers
-    for match in soup.find_all('div', class_='cb-mtch-lst'):
-        recent_results.append({
-            'title': match.find('h3').text.strip() if match.find('h3') else 'Completed Match',
-            'result': match.find('div', class_='cb-text-complete').text.strip() if match.find('div', class_='cb-text-complete') else 'Result TBD'
-        })
-    return jsonify(recent_results)
+    # If that fails, we try the alternative 'cb-col cb-col-100 cb-lv-main'
+    if not matches:
+        matches = soup.find_all('div', class_='cb-lv-main')
+
+    for match in matches:
+        link = match.find('a', href=True)
+        if link:
+            # Extract ID from href: /live-cricket-scores/12345/match-name
+            match_id = link['href'].split('/')[2]
+            live_match_ids.append(match_id)
+
+    return jsonify({"live_match_ids": live_match_ids})
+
+@app.route('/upcoming')
+def upcoming():
+    url = "https://www.cricbuzz.com/cricket-schedule/upcoming-series/international"
+    headers = {'User-Agent': random.choice(user_agent_list)}
+    res = requests.get(url, headers=headers)
+    soup = bs(res.text, 'html.parser')
+    
+    upcoming_matches = []
+    # Upcoming matches are usually inside 'cb-lv-grn-strip' headers and siblings
+    match_elements = soup.find_all('div', class_='cb-col-100 cb-col')
+    
+    for match in match_elements:
+        title = match.find('a')
+        time = match.find('div', class_='cb-font-12 text-gray')
+        if title and time:
+            upcoming_matches.append({
+                "title": title.text.strip(),
+                "time": time.text.strip()
+            })
+            
+    return jsonify(upcoming_matches[:10]) # Return first 10
+
+@app.route('/results')
+def results():
+    url = "https://www.cricbuzz.com/cricket-match/live-scores/recent-matches"
+    headers = {'User-Agent': random.choice(user_agent_list)}
+    res = requests.get(url, headers=headers)
+    soup = bs(res.text, 'html.parser')
+    
+    recent_results = []
+    # Search for match cards in the recent section
+    matches = soup.find_all('div', class_='cb-lv-main')
+    
+    for match in matches:
+        title = match.find('h3')
+        result = match.find('div', class_='cb-lv-scrs-col') # Scrutinize the result text
+        if title and result:
+            recent_results.append({
+                "title": title.text.strip(),
+                "result": result.text.strip()
+            })
+            
+    return jsonify(recent_results[:10])
         
-@app.route('/live', methods=['GET'])
-def get_ids():
-    user_agent = random.choice(user_agent_list)
-    headers = {'User-Agent': user_agent}
-    session_object = requests.Session()
-    r = session_object.get('https://www.cricbuzz.com/cricket-match/live-scores', headers=headers)
-    soup = bs(r.text, 'html.parser')
-    try:
-        match_id_list = soup.find_all('a', class_='text-hvr-underline')
-        # This extracts the ID from the Cricbuzz URL
-        ids = [i['href'].split('/')[2] for i in match_id_list if i['href'].startswith('/live-cricket-scores/')]
-        return jsonify({'live_match_ids': ids})
-    except Exception:
-        return jsonify({'live_match_ids': []})
 
 @app.route('/score/live', methods=['GET'])
 def live():
